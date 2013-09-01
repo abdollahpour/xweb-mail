@@ -1,0 +1,73 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>ir.xweb.common</groupId>
+	<artifactId>xweb-wiki</artifactId>
+	<packaging>jar</packaging>
+	<version>0.6.1-SNAPSHOT</version>
+	<name>XWeb wiki module</name>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<com.objectdb.version>2.4.1</com.objectdb.version>
+		<ir.xweb.version>0.6.1-SNAPSHOT</ir.xweb.version>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>xweb</id>
+			<url>https://raw.github.com/abdollahpour/xweb/master/releases</url>
+		</repository>
+	</repositories>
+
+	<build>
+		<finalName>${artifactId}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.0.2</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>			
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>ir.xweb</groupId>
+			<artifactId>xweb</artifactId>
+			<version>${ir.xweb.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.mail</groupId>
+			<artifactId>mail</artifactId>
+			<version>1.4.5</version>
+		</dependency>
+	</dependencies>
+
+	<distributionManagement>
+		<repository>
+			<id>repo</id>
+			<url>https://github.com/abdollahpour/xweb/raw/master/releases</url>
+		</repository>
+		<snapshotRepository>
+			<id>snapshot-repo</id>
+			<url>https://github.com/abdollahpour/xweb/raw/master/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
+</project>
+
+<!--
+== How to deploy ==
+mvn -DaltDeploymentRepository=snapshot-repo::default::file:snapshots clean deploy
+mvn -DaltDeploymentRepository=repo::default::file:releases/ clean deploy
+-->
