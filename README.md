@@ -23,8 +23,7 @@ module.sendEmail(
         Arrays.asList("ha.hamed@gmail.com"),
         Arrays.asList("telecom_hamed@yahoo.com"),
         "test",
-        "some text in here",
-        (File[])null);
+        "some text in here");
 ```
 
 ## Make it

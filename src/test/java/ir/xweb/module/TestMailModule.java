@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Properties;
 
 public class TestMailModule extends TestModule {
 
@@ -22,12 +21,15 @@ public class TestMailModule extends TestModule {
         final HashMap<String, String> params = new HashMap<String, String>();
         params.put("name", "Hamed Abdollahpour");
 
+        final File attachment = new File(dir, "simple.xsl");
+
         final MailModule module = manager.getModule(MailModule.class);
         module.sendEmail(
-                Arrays.asList("ha.hamed@gmail.com"),
-                Arrays.asList("telecom_hamed@yahoo.com"),
+                Arrays.asList(module.getProperties().get("email")), // send it back to yourself
+                Arrays.asList(module.getProperties().get("email")),
                 "test",
-                templateEngine.apply("simple", params));
+                templateEngine.apply("simple", params),
+                Arrays.asList(attachment));
     }
 
     @Test

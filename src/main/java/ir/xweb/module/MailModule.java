@@ -100,11 +100,11 @@ public class MailModule extends Module {
             final List<String> replayTo,
             final String subject,
             final String body,
-            final File[] attachments) throws Exception {
+            final List<File> attachments) throws Exception {
 
         Map<String, DataSource> dataSources = null;
-        if(attachments != null && attachments.length > 0) {
-            dataSources = new HashMap<String, DataSource>(attachments.length);
+        if(attachments != null && attachments.size() > 0) {
+            dataSources = new HashMap<String, DataSource>(attachments.size());
             for(File f:attachments) {
                 dataSources.put(f.getName(), new FileDataSource(f));
             }
