@@ -1,0 +1,6 @@
+*/target/*
+.*
+*.iml
+!/.gitignore
+data/
+catalina.base_IS_UNDEFINED/
