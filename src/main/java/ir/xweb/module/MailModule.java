@@ -91,6 +91,14 @@ public class MailModule extends Module {
             final List<String> to,
             final List<String> replayTo,
             final String subject,
+            final String body) throws Exception {
+        sendEmail(to, replayTo, subject, body, (Map<String, DataSource>)null);
+    }
+
+    public void sendEmail(
+            final List<String> to,
+            final List<String> replayTo,
+            final String subject,
             final String body,
             final File[] attachments) throws Exception {
 

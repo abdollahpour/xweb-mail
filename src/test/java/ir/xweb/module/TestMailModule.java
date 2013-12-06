@@ -27,8 +27,7 @@ public class TestMailModule extends TestModule {
                 Arrays.asList("ha.hamed@gmail.com"),
                 Arrays.asList("telecom_hamed@yahoo.com"),
                 "test",
-                templateEngine.apply("simple", params),
-                (File[])null);
+                templateEngine.apply("simple", params));
     }
 
     @Test
