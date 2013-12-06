@@ -26,3 +26,6 @@ module.sendEmail(
         "some text in here",
         (File[])null);
 ```
+
+## Make it
+mvn clean install -Dmaven.test.skip=true
