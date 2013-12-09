@@ -21,7 +21,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Map;
 
-public class TemplateEngine {
+/**
+ * This feature will add to XWeb ResourceModule soon!
+ */
+class TemplateEngine {
 
     private final static Logger logger = LoggerFactory.getLogger("TemplateEngine");
 
