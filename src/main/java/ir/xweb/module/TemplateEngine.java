@@ -23,7 +23,9 @@ import java.util.Map;
 
 /**
  * This feature will add to XWeb ResourceModule soon!
+ * @Deprecated Please Use ResourceModule instead
  */
+@Deprecated
 class TemplateEngine {
 
     private final static Logger logger = LoggerFactory.getLogger("TemplateEngine");

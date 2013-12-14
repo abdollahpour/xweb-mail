@@ -2,9 +2,6 @@ package ir.xweb.module;
 
 import com.sun.mail.smtp.SMTPTransport;
 import ir.xweb.util.Validator;
-import jdbm.PrimaryTreeMap;
-import jdbm.RecordManager;
-import jdbm.RecordManagerFactory;
 
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
