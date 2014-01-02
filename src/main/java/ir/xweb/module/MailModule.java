@@ -19,6 +19,10 @@ public class MailModule extends Module {
 
     public final static String PARAM_PASSWORD = "password";
 
+    public final static String PARAM_HOST = "host";
+
+    public final static String PARAM_PORT = "port";
+
     public final static String PARAM_DATABASE_FILE = "file.database";
 
     private final String email;
@@ -47,7 +51,7 @@ public class MailModule extends Module {
 
         if(email.toLowerCase().endsWith("@gmail.com")) {
             defaultHost = "smtp.gmail.com";
-            defaultPort = 465;
+            defaultPort = 587;
 
             final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
 
@@ -64,14 +68,15 @@ public class MailModule extends Module {
             defaultPort = 25;
         }
 
-        final String host = properties.getString("host", defaultHost);
-        final int port = properties.getInt("port", defaultPort);
+        final String host = properties.getString(PARAM_HOST, defaultHost);
+        final int port = properties.getInt(PARAM_PORT, defaultPort);
 
         props.put("mail.smtp.host", host);
         props.put("mail.smtp.port", port);
         if(this.password != null) {
             props.put("mail.smtp.auth", true);
-
+            props.setProperty("mail.user", "pdroid");
+            props.setProperty("mail.password", password);
         }
     }
 
@@ -108,6 +113,13 @@ public class MailModule extends Module {
             final String body,
             final Map<String, DataSource> attachments) throws IOException {
 
+        if(subject == null) {
+            throw new IllegalArgumentException("null subject");
+        }
+        if(body == null) {
+            throw new IllegalArgumentException("null body");
+        }
+
         try {
             if(to == null || to.size() == 0) {
                 throw new IllegalArgumentException("null or empty to");
@@ -134,7 +146,7 @@ public class MailModule extends Module {
             final MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(email));
 
-            if(replayTo == null && replayTo.size() > 0) {
+            if(replayTo != null && replayTo.size() > 0) {
                 final Address[] addresses = new Address[replayTo.size()];
                 for(int i=0; i<replayTo.size(); i++) {
                     addresses[i] = new InternetAddress(replayTo.get(i));
@@ -164,13 +176,15 @@ public class MailModule extends Module {
                 }
             }
 
-            MimeBodyPart textPart = new MimeBodyPart();
-            textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
-            multipart.addBodyPart(textPart);
-
             MimeBodyPart htmlPart = new MimeBodyPart();
             htmlPart.setContent(body, "text/html; charset=utf-8");
             multipart.addBodyPart(htmlPart);
+
+            MimeBodyPart textPart = new MimeBodyPart();
+            textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
+            //multipart.addBodyPart(textPart);
+
+            // TODO: HTML email appear 2 time in GMAIL! We disable text mode now
 
             message.setSentDate(new Date());
             message.setContent(multipart);

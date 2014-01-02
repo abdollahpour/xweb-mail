@@ -17,6 +17,7 @@ public class TestMailModule extends TestModule {
     public void testGmail() throws Exception {
         final File dir = new File("sample");
         final TemplateEngine templateEngine = new TemplateEngine(dir);
+        //final ResourceModule r = manager.getModuleOrThrow(ResourceModule.class);
 
         final HashMap<String, String> params = new HashMap<String, String>();
         params.put("name", "Hamed Abdollahpour");

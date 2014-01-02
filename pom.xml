@@ -48,6 +48,13 @@
 			<version>${ir.xweb.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>ir.xweb</groupId>
+			<artifactId>xweb</artifactId>
+			<version>${ir.xweb.version}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>javax.mail</groupId>
 			<artifactId>mail</artifactId>
 			<version>1.4.5</version>
