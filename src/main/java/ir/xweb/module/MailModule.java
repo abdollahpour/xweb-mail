@@ -46,7 +46,7 @@ public class MailModule extends Module {
 
         props = System.getProperties();
 
-        boolean ssh = properties.getBoolean("ssh", false);;
+        boolean ssl = properties.getBoolean("ssl", false);;
         String defaultHost = null;
         int defaultPort = 25;
 
@@ -54,7 +54,7 @@ public class MailModule extends Module {
             defaultHost = "smtp.gmail.com";
             defaultPort = 587;
 
-            ssh = true;
+            ssl = true;
             props.setProperty("mail.smtp.socketFactory.fallback", "false");
             props.setProperty("mail.smtp.socketFactory.port", "465");
             props.setProperty("mail.smtps.auth", "true");
@@ -66,7 +66,7 @@ public class MailModule extends Module {
             } catch (Exception ex) {}
         }
 
-        if(ssh) {
+        if(ssl) {
             final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
             props.setProperty("mail.smtp.socketFactory.class", SSL_FACTORY);
         }
