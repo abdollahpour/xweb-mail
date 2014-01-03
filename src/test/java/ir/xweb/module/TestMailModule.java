@@ -26,7 +26,7 @@ public class TestMailModule extends TestModule {
 
         final MailModule module = manager.getModule(MailModule.class);
         module.sendEmail(
-                Arrays.asList(module.getProperties().get("email")), // send it back to yourself
+                Arrays.asList("ha.hamed@gmail.com"), // send it back to yourself
                 Arrays.asList(module.getProperties().get("email")),
                 "test",
                 templateEngine.apply("simple", params),

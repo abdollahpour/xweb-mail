@@ -36,7 +36,7 @@ public class MailModule extends Module {
     public MailModule(final Manager m, final ModuleInfo info, final ModuleParam properties) throws ModuleException {
         super(m, info, properties);
 
-        email = properties.validate(PARAM_EMAIL, Validator.VALIDATOR_EMAIL, true).getString(null);
+        email = properties.validate(PARAM_EMAIL, null, true).getString(null);
         password = properties.getString(PARAM_PASSWORD, null);
         databaseFile = properties.getFile(PARAM_DATABASE_FILE, (File) null);
 
@@ -46,16 +46,15 @@ public class MailModule extends Module {
 
         props = System.getProperties();
 
+        boolean ssh = properties.getBoolean("ssh", false);;
         String defaultHost = null;
-        Integer defaultPort = null;
+        int defaultPort = 25;
 
         if(email.toLowerCase().endsWith("@gmail.com")) {
             defaultHost = "smtp.gmail.com";
             defaultPort = 587;
 
-            final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
-
-            props.setProperty("mail.smtp.socketFactory.class", SSL_FACTORY);
+            ssh = true;
             props.setProperty("mail.smtp.socketFactory.fallback", "false");
             props.setProperty("mail.smtp.socketFactory.port", "465");
             props.setProperty("mail.smtps.auth", "true");
@@ -65,7 +64,11 @@ public class MailModule extends Module {
             try {
                 defaultHost = InetAddress.getLocalHost().getHostName();
             } catch (Exception ex) {}
-            defaultPort = 25;
+        }
+
+        if(ssh) {
+            final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
+            props.setProperty("mail.smtp.socketFactory.class", SSL_FACTORY);
         }
 
         final String host = properties.getString(PARAM_HOST, defaultHost);
