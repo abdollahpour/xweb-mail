@@ -179,13 +179,19 @@ public class MailModule extends Module {
                 }
             }
 
-            MimeBodyPart htmlPart = new MimeBodyPart();
-            htmlPart.setContent(body, "text/html; charset=utf-8");
-            multipart.addBodyPart(htmlPart);
+            if(isHtml(body)) {
+                final MimeBodyPart htmlPart = new MimeBodyPart();
+                htmlPart.setContent(body, "text/html; charset=utf-8");
+                multipart.addBodyPart(htmlPart);
 
-            MimeBodyPart textPart = new MimeBodyPart();
-            textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
-            //multipart.addBodyPart(textPart);
+                //MimeBodyPart textPart = new MimeBodyPart();
+                //textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
+                //multipart.addBodyPart(textPart);
+            } else {
+                MimeBodyPart textPart = new MimeBodyPart();
+                textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
+                multipart.addBodyPart(textPart);
+            }
 
             // TODO: HTML email appear 2 time in GMAIL! We disable text mode now
 
@@ -205,6 +211,16 @@ public class MailModule extends Module {
         } catch (Exception ex) {
             throw new IOException(ex);
         }
+    }
+
+    public boolean isHtml(final String s) {
+        for(int i=0; i<s.length(); i++) {
+            char c = s.charAt(i);
+            if("\r\n\t ".indexOf(c) == -1) {
+                return c == '<';
+            }
+        }
+        return false;
     }
 
 }
