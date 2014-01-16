@@ -11,8 +11,8 @@
 			<name>mail</name>
 			<class>ir.xweb.module.MailModule</class>
 			<properties>
-				<property key='email'>your@email.com</property>
-                <property key='password'>your_password</property>
+				<property key="email">noreplay2014@gmail.com</property>
+				<property key="password">whatthehellisthis</property>
 			</properties>
 		</module>
 	</modules>
