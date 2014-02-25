@@ -93,6 +93,8 @@ public class MailModule extends Module {
 
     public void sendEmail(
             final List<String> to,
+            final List<String> cc,
+            final List<String> bcc,
             final List<String> replayTo,
             final String subject,
             final String body,
@@ -106,11 +108,31 @@ public class MailModule extends Module {
             }
         }
 
-        sendEmail(to, replayTo, subject, body, dataSources);
+        sendEmail(to, cc, bcc, replayTo, subject, body, dataSources);
     }
 
     public void sendEmail(
             final List<String> to,
+            final List<String> replayTo,
+            final String subject,
+            final String body,
+            final List<File> attachments) throws IOException {
+        sendEmail(to, null, null, replayTo, subject, body, attachments);
+    }
+
+    public void sendEmail(
+            final List<String> to,
+            final List<String> replayTo,
+            final String subject,
+            final String body,
+            final Map<String, DataSource> attachments) throws IOException {
+        sendEmail(to, null, null, replayTo, subject, body, attachments);
+    }
+
+    public void sendEmail(
+            final List<String> to,
+            final List<String> cc,
+            final List<String> bcc,
             final List<String> replayTo,
             final String subject,
             final String body,
@@ -124,8 +146,8 @@ public class MailModule extends Module {
         }
 
         try {
-            if(to == null || to.size() == 0) {
-                throw new IllegalArgumentException("null or empty to");
+            if((to == null || to.size() == 0) && (cc == null || cc.size() == 0) && (bcc == null || bcc.size() == 0)) {
+                throw new IllegalArgumentException("null or empty to,cc,bcc");
             }
             if(subject == null || subject.length() == 0) {
                 throw new IllegalArgumentException("null or empty subject");
@@ -157,12 +179,15 @@ public class MailModule extends Module {
                 message.setReplyTo(addresses);
             }
 
-            final Address[] addresses = new Address[to.size()];
-            for(int i=0; i<to.size(); i++) {
-                addresses[i] = new InternetAddress(to.get(i));
+            if(to != null) {
+                message.setRecipients(Message.RecipientType.TO, toAddress(to));
             }
-
-            message.setRecipients(Message.RecipientType.BCC, addresses);
+            if(cc != null) {
+                message.setRecipients(Message.RecipientType.CC, toAddress(cc));
+            }
+            if(bcc != null) {
+                message.setRecipients(Message.RecipientType.BCC, toAddress(bcc));
+            }
             message.setSubject(subject);
 
 
@@ -203,7 +228,7 @@ public class MailModule extends Module {
                 final SMTPTransport t = (SMTPTransport) session.getTransport("smtps");
 
                 t.connect("smtp.gmail.com", email, password);
-                t.sendMessage(message, addresses);
+                t.sendMessage(message, message.getAllRecipients());
                 t.close();
             } else {
                 Transport.send(message);
@@ -211,6 +236,15 @@ public class MailModule extends Module {
         } catch (Exception ex) {
             throw new IOException(ex);
         }
+    }
+
+    private Address[] toAddress(final List<String> to) throws AddressException {
+        final Address[] addresses = new Address[to.size()];
+        for(int i=0; i<to.size(); i++) {
+            addresses[i] = new InternetAddress(to.get(i));
+        }
+
+        return addresses;
     }
 
     public boolean isHtml(final String s) {
