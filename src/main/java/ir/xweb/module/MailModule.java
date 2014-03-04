@@ -180,13 +180,13 @@ public class MailModule extends Module {
             }
 
             if(to != null) {
-                message.setRecipients(Message.RecipientType.TO, toAddress(to));
+                message.addRecipients(Message.RecipientType.TO, toAddress(to));
             }
             if(cc != null) {
-                message.setRecipients(Message.RecipientType.CC, toAddress(cc));
+                message.addRecipients(Message.RecipientType.CC, toAddress(cc));
             }
             if(bcc != null) {
-                message.setRecipients(Message.RecipientType.BCC, toAddress(bcc));
+                message.addRecipients(Message.RecipientType.BCC, toAddress(bcc));
             }
             message.setSubject(subject);
 
