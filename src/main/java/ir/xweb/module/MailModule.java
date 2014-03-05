@@ -12,6 +12,10 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class MailModule extends Module {
 
@@ -23,22 +27,21 @@ public class MailModule extends Module {
 
     public final static String PARAM_PORT = "port";
 
-    public final static String PARAM_DATABASE_FILE = "file.database";
-
     private final String email;
 
     private final String password;
 
     private final Properties props;
 
-    private File databaseFile;
+    private LinkedBlockingDeque<Mail> mails = new LinkedBlockingDeque<Mail>();
+
+    private ExecutorService executor;
 
     public MailModule(final Manager m, final ModuleInfo info, final ModuleParam properties) throws ModuleException {
         super(m, info, properties);
 
         email = properties.validate(PARAM_EMAIL, null, true).getString(null);
         password = properties.getString(PARAM_PASSWORD, null);
-        databaseFile = properties.getFile(PARAM_DATABASE_FILE, (File) null);
 
         if(email == null) {
             throw new IllegalArgumentException("Please email");
@@ -83,6 +86,7 @@ public class MailModule extends Module {
         }
     }
 
+    @Deprecated
     public void sendEmail(
             final List<String> to,
             final List<String> replayTo,
@@ -91,6 +95,7 @@ public class MailModule extends Module {
         sendEmail(to, replayTo, subject, body, (Map<String, DataSource>)null);
     }
 
+    @Deprecated
     public void sendEmail(
             final List<String> to,
             final List<String> cc,
@@ -111,6 +116,7 @@ public class MailModule extends Module {
         sendEmail(to, cc, bcc, replayTo, subject, body, dataSources);
     }
 
+    @Deprecated
     public void sendEmail(
             final List<String> to,
             final List<String> replayTo,
@@ -120,6 +126,7 @@ public class MailModule extends Module {
         sendEmail(to, null, null, replayTo, subject, body, attachments);
     }
 
+    @Deprecated
     public void sendEmail(
             final List<String> to,
             final List<String> replayTo,
@@ -129,33 +136,70 @@ public class MailModule extends Module {
         sendEmail(to, null, null, replayTo, subject, body, attachments);
     }
 
-    public void sendEmail(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final Map<String, DataSource> attachments) throws IOException {
+    /**
+     * Send Mail asynchronously. It does not support attachments but you can use files
+     * @param mail
+     * @throws IOException
+     */
+    public synchronized void aSend(final Mail... mail) throws IOException {
+        // Validate
+        for(Mail m:mail) {
+            validate(m);
+        }
 
-        if(subject == null) {
-            throw new IllegalArgumentException("null subject");
+        for(Mail m:mail) {
+            if(addToQ(m)) {
+                if(executor == null) {
+                    executor = Executors.newSingleThreadExecutor();
+                }
+
+                if(executor.isTerminated()) {
+                    executor.submit(new Runnable() {
+                        @Override
+                        public void run() {
+                            Mail mail;
+                            while((mail = nextFromQ()) != null) {
+                                try {
+                                    send(mail);
+                                } catch (Throwable t) {
+                                    errorInQ(mail);
+                                }
+                            }
+                        }
+                    });
+                }
+            } else {
+                throw new IllegalArgumentException("Error to add mail: " + mail);
+            }
         }
-        if(body == null) {
-            throw new IllegalArgumentException("null body");
-        }
+    }
+
+    /**
+     * Add email to the sending Q.
+     * You can Override this method to manage them by yourself (in database for example)
+     * @param mail
+     */
+    protected synchronized boolean addToQ(final Mail mail) {
+        return mails.add(mail);
+    }
+
+    protected synchronized Mail nextFromQ() {
+        return mails.size() > 0 ? mails.pop() : null;
+    }
+
+    /**
+     * Error happens to send email from Q.
+     * You can Override this method to manage them by yourself (in database for example)
+     * @param mail
+     */
+    protected synchronized boolean errorInQ(final Mail mail) {
+        return mails.remove(mail);
+    }
+
+    public void send(final Mail mail) throws IOException {
+        validate(mail);
 
         try {
-            if((to == null || to.size() == 0) && (cc == null || cc.size() == 0) && (bcc == null || bcc.size() == 0)) {
-                throw new IllegalArgumentException("null or empty to,cc,bcc");
-            }
-            if(subject == null || subject.length() == 0) {
-                throw new IllegalArgumentException("null or empty subject");
-            }
-            if(body == null || body.length() == 0) {
-                throw new IllegalArgumentException("null or empty body");
-            }
-
             Session session;
             if(password != null) {
                 session = Session.getDefaultInstance(props,
@@ -171,31 +215,30 @@ public class MailModule extends Module {
             final MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(email));
 
-            if(replayTo != null && replayTo.size() > 0) {
-                final Address[] addresses = new Address[replayTo.size()];
-                for(int i=0; i<replayTo.size(); i++) {
-                    addresses[i] = new InternetAddress(replayTo.get(i));
+            if(mail.replayTo() != null && mail.replayTo().size() > 0) {
+                final Address[] addresses = new Address[mail.replayTo().size()];
+                for(int i=0; i<mail.replayTo().size(); i++) {
+                    addresses[i] = new InternetAddress(mail.replayTo().get(i));
                 }
                 message.setReplyTo(addresses);
             }
 
-            if(to != null) {
-                message.addRecipients(Message.RecipientType.TO, toAddress(to));
+            if(mail.to() != null) {
+                message.addRecipients(Message.RecipientType.TO, toAddress(mail.to()));
             }
-            if(cc != null) {
-                message.addRecipients(Message.RecipientType.CC, toAddress(cc));
+            if(mail.cc() != null) {
+                message.addRecipients(Message.RecipientType.CC, toAddress(mail.cc()));
             }
-            if(bcc != null) {
-                message.addRecipients(Message.RecipientType.BCC, toAddress(bcc));
+            if(mail.bcc() != null) {
+                message.addRecipients(Message.RecipientType.BCC, toAddress(mail.bcc()));
             }
-            message.setSubject(subject);
+            message.setSubject(mail.subject());
 
 
             final Multipart multipart = new MimeMultipart();
 
-
-            if(attachments != null) {
-                for(Map.Entry<String,DataSource> e:attachments.entrySet()) {
+            if(mail.attachments() != null) {
+                for(Map.Entry<String,DataSource> e:mail.attachments().entrySet()) {
                     MimeBodyPart messageBodyPart = new MimeBodyPart();
                     messageBodyPart.setDataHandler(new DataHandler(e.getValue()));
                     messageBodyPart.setFileName(e.getKey());
@@ -204,9 +247,20 @@ public class MailModule extends Module {
                 }
             }
 
-            if(isHtml(body)) {
+            if(mail.files() != null) {
+                for(File f:mail.files()) {
+                    MimeBodyPart messageBodyPart = new MimeBodyPart();
+                    messageBodyPart.setDataHandler(new DataHandler(new FileDataSource(f)));
+                    messageBodyPart.setFileName(f.getName());
+
+                    multipart.addBodyPart(messageBodyPart);
+                }
+            }
+
+
+            if(isHtml(mail.body())) {
                 final MimeBodyPart htmlPart = new MimeBodyPart();
-                htmlPart.setContent(body, "text/html; charset=utf-8");
+                htmlPart.setContent(mail.body(), "text/html; charset=utf-8");
                 multipart.addBodyPart(htmlPart);
 
                 //MimeBodyPart textPart = new MimeBodyPart();
@@ -214,7 +268,7 @@ public class MailModule extends Module {
                 //multipart.addBodyPart(textPart);
             } else {
                 MimeBodyPart textPart = new MimeBodyPart();
-                textPart.setText(body.replaceAll("\\<.*?\\>", ""), "utf-8");
+                textPart.setText(mail.body().replaceAll("\\<.*?\\>", ""), "utf-8");
                 multipart.addBodyPart(textPart);
             }
 
@@ -238,6 +292,71 @@ public class MailModule extends Module {
         }
     }
 
+    @Deprecated
+    public void sendEmail(
+            final List<String> to,
+            final List<String> cc,
+            final List<String> bcc,
+            final List<String> replayTo,
+            final String subject,
+            final String body,
+            final Map<String, DataSource> attachments) throws IOException {
+
+        send(to, cc, bcc, replayTo, subject, body, attachments);
+    }
+
+    public void send(
+            final List<String> to,
+            final List<String> cc,
+            final List<String> bcc,
+            final List<String> replayTo,
+            final String subject,
+            final String body,
+            final Map<String, DataSource> attachments) throws IOException {
+
+        send(new Mail() {
+            @Override
+            public List<String> to() {
+                return to;
+            }
+
+            @Override
+            public List<String> bcc() {
+                return cc;
+            }
+
+            @Override
+            public List<String> cc() {
+                return bcc;
+            }
+
+            @Override
+            public List<String> replayTo() {
+                return replayTo;
+            }
+
+            @Override
+            public String subject() {
+                return subject;
+            }
+
+            @Override
+            public String body() {
+                return body;
+            }
+
+            @Override
+            public List<File> files() {
+                return files();
+            }
+
+            @Override
+            public Map<String, DataSource> attachments() {
+                return attachments;
+            }
+        });
+    }
+
     private Address[] toAddress(final List<String> to) throws AddressException {
         final Address[] addresses = new Address[to.size()];
         for(int i=0; i<to.size(); i++) {
@@ -247,7 +366,7 @@ public class MailModule extends Module {
         return addresses;
     }
 
-    public boolean isHtml(final String s) {
+    private boolean isHtml(final String s) {
         for(int i=0; i<s.length(); i++) {
             char c = s.charAt(i);
             if("\r\n\t ".indexOf(c) == -1) {
@@ -255,6 +374,44 @@ public class MailModule extends Module {
             }
         }
         return false;
+    }
+
+    private void validate(final Mail m) {
+        if(m == null) {
+            throw new IllegalArgumentException("null");
+        }
+
+        if((m.to() == null || m.to().size() == 0) && (m.bcc() == null || m.bcc().size() == 0) && (m.cc() == null || m.cc().size() == 0)) {
+            throw new IllegalArgumentException("There should be at least one TO, BCC or CC");
+        }
+
+        if(m.subject() == null) {
+            throw new IllegalArgumentException("null subject");
+        }
+
+        if(m.body() == null) {
+            throw new IllegalArgumentException("null body");
+        }
+    }
+
+    public interface Mail {
+
+        public List<String> to();
+
+        public List<String> bcc();
+
+        public List<String> cc();
+
+        public List<String> replayTo();
+
+        public String subject();
+
+        public String body();
+
+        public List<File> files();
+
+        public Map<String, DataSource> attachments();
+
     }
 
 }
