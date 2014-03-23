@@ -11,8 +11,12 @@
 			<name>mail</name>
 			<class>ir.xweb.module.MailModule</class>
 			<properties>
-				<property key="email">sample@gmail.com</property>
-				<property key="password">something</property>
+				<property key='from'></property>
+				<property key='username'></property>
+				<property key='password'></property>
+				<property key="port"></property>
+				<property key="host"></property>
+				<property key="ssl"></property>
 			</properties>
 		</module>
 	</modules>

@@ -19,15 +19,21 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 public class MailModule extends Module {
 
-    public final static String PARAM_EMAIL = "email";
+    public final static String PARAM_FROM = "from";
+
+    public final static String PARAM_USERNAME = "username";
 
     public final static String PARAM_PASSWORD = "password";
 
-    public final static String PARAM_HOST = "host";
-
     public final static String PARAM_PORT = "port";
 
-    private final String email;
+    public final static String PARAM_HOST = "host";
+
+    public final static String PARAM_SSL = "ssl";
+
+    private final String from;
+
+    private final String username;
 
     private final String password;
 
@@ -35,25 +41,22 @@ public class MailModule extends Module {
 
     private LinkedBlockingDeque<Mail> mails = new LinkedBlockingDeque<Mail>();
 
-    private ExecutorService executor;
+    private Thread executor;
 
     public MailModule(final Manager m, final ModuleInfo info, final ModuleParam properties) throws ModuleException {
         super(m, info, properties);
 
-        email = properties.validate(PARAM_EMAIL, null, true).getString(null);
-        password = properties.getString(PARAM_PASSWORD, null);
-
-        if(email == null) {
-            throw new IllegalArgumentException("Please email");
-        }
+        from = properties.validate(PARAM_FROM, Validator.VALIDATOR_EMAIL, false).getString();
+        username = properties.getString(PARAM_USERNAME, from);
+        password = properties.getString(PARAM_PASSWORD);
 
         props = System.getProperties();
 
-        boolean ssl = properties.getBoolean("ssl", false);;
+        boolean ssl = properties.getBoolean(PARAM_SSL, false);
         String defaultHost = null;
         int defaultPort = 25;
 
-        if(email.toLowerCase().endsWith("@gmail.com")) {
+        if(username != null && username.toLowerCase().endsWith("@gmail.com")) {
             defaultHost = "smtp.gmail.com";
             defaultPort = 587;
 
@@ -81,7 +84,7 @@ public class MailModule extends Module {
         props.put("mail.smtp.port", port);
         if(this.password != null) {
             props.put("mail.smtp.auth", true);
-            props.setProperty("mail.user", "pdroid");
+            props.setProperty("mail.user", username);
             props.setProperty("mail.password", password);
         }
     }
@@ -149,12 +152,8 @@ public class MailModule extends Module {
 
         for(Mail m:mail) {
             if(addToQ(m)) {
-                if(executor == null) {
-                    executor = Executors.newSingleThreadExecutor();
-                }
-
-                if(executor.isTerminated()) {
-                    executor.submit(new Runnable() {
+                if(executor == null || !executor.isAlive()) {
+                    executor = new Thread() {
                         @Override
                         public void run() {
                             Mail mail;
@@ -166,7 +165,8 @@ public class MailModule extends Module {
                                 }
                             }
                         }
-                    });
+                    };
+                    executor.start();
                 }
             } else {
                 throw new IllegalArgumentException("Error to add mail: " + mail);
@@ -205,7 +205,7 @@ public class MailModule extends Module {
                 session = Session.getDefaultInstance(props,
                         new javax.mail.Authenticator() {
                             protected PasswordAuthentication getPasswordAuthentication() {
-                                return new PasswordAuthentication(email, password);
+                                return new PasswordAuthentication(username, password);
                             }
                         });
             } else {
@@ -213,7 +213,6 @@ public class MailModule extends Module {
             }
 
             final MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(email));
 
             if(mail.replayTo() != null && mail.replayTo().size() > 0) {
                 final Address[] addresses = new Address[mail.replayTo().size()];
@@ -231,6 +230,13 @@ public class MailModule extends Module {
             }
             if(mail.bcc() != null) {
                 message.addRecipients(Message.RecipientType.BCC, toAddress(mail.bcc()));
+            }
+            if(mail.from() != null) {
+                message.setFrom(new InternetAddress(mail.from()));
+            } else if(this.from != null) {
+                message.setFrom(new InternetAddress(this.from));
+            } else if(username != null && username.indexOf('@') > 0) {
+                message.setFrom(new InternetAddress(username));
             }
             message.setSubject(mail.subject());
 
@@ -281,7 +287,7 @@ public class MailModule extends Module {
             if(props.getProperty("mail.smtp.host").equals("smtp.gmail.com")) {
                 final SMTPTransport t = (SMTPTransport) session.getTransport("smtps");
 
-                t.connect("smtp.gmail.com", email, password);
+                t.connect("smtp.gmail.com", username, password);
                 t.sendMessage(message, message.getAllRecipients());
                 t.close();
             } else {
@@ -322,12 +328,12 @@ public class MailModule extends Module {
 
             @Override
             public List<String> bcc() {
-                return cc;
+                return bcc;
             }
 
             @Override
             public List<String> cc() {
-                return bcc;
+                return cc;
             }
 
             @Override
@@ -353,6 +359,11 @@ public class MailModule extends Module {
             @Override
             public Map<String, DataSource> attachments() {
                 return attachments;
+            }
+
+            @Override
+            public String from() {
+                return null;
             }
         });
     }
@@ -394,7 +405,60 @@ public class MailModule extends Module {
         }
     }
 
-    public interface Mail {
+    public static Mail newMail(final String to, final String subject, final String body) {
+        return newMail(Arrays.asList(to), subject, body);
+    }
+
+    public static Mail newMail(final List<String> to, final String subject, final String body) {
+        return new Mail() {
+            @Override
+            public List<String> to() {
+                return to;
+            }
+
+            @Override
+            public List<String> bcc() {
+                return null;
+            }
+
+            @Override
+            public List<String> cc() {
+                return null;
+            }
+
+            @Override
+            public List<String> replayTo() {
+                return null;
+            }
+
+            @Override
+            public String subject() {
+                return subject;
+            }
+
+            @Override
+            public String body() {
+                return body;
+            }
+
+            @Override
+            public List<File> files() {
+                return null;
+            }
+
+            @Override
+            public Map<String, DataSource> attachments() {
+                return null;
+            }
+
+            @Override
+            public String from() {
+                return null;
+            }
+        };
+    }
+
+    public static interface Mail {
 
         public List<String> to();
 
@@ -411,6 +475,8 @@ public class MailModule extends Module {
         public List<File> files();
 
         public Map<String, DataSource> attachments();
+
+        public String from();
 
     }
 

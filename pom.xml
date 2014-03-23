@@ -46,6 +46,7 @@
 			<groupId>ir.xweb</groupId>
 			<artifactId>xweb</artifactId>
 			<version>${ir.xweb.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>ir.xweb</groupId>
