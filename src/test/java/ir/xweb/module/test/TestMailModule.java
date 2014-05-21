@@ -1,16 +1,12 @@
 package ir.xweb.module.test;
 
 import ir.xweb.module.MailModule;
-import ir.xweb.module.TestModule;
+import ir.xweb.test.module.TestModule;
 import org.junit.Test;
 
 import java.io.IOException;
 
 public class TestMailModule extends TestModule {
-
-
-    public TestMailModule() throws IOException {
-    }
 
     @Test
     public void test() throws IOException {

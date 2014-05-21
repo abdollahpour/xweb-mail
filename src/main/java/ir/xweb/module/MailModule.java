@@ -66,6 +66,7 @@ public class MailModule extends Module {
             props.setProperty("mail.smtps.auth", "true");
             props.put("mail.smtps.quitwait", "false");
             props.put("mail.smtp.starttls.enable", true);
+            props.put("mail.smtp.timeout", 10000);
         } else {
             try {
                 defaultHost = InetAddress.getLocalHost().getHostName();
@@ -371,7 +372,7 @@ public class MailModule extends Module {
     private Address[] toAddress(final List<String> to) throws AddressException {
         final Address[] addresses = new Address[to.size()];
         for(int i=0; i<to.size(); i++) {
-            addresses[i] = new InternetAddress(to.get(i));
+            addresses[i] = new InternetAddress(to.get(i).trim());
         }
 
         return addresses;
