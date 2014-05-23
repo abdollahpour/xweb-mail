@@ -67,6 +67,7 @@ public class MailModule extends Module {
             props.put("mail.smtps.quitwait", "false");
             props.put("mail.smtp.starttls.enable", true);
             props.put("mail.smtp.timeout", 10000);
+            props.put("mail.smtp.connectiontimeout", 1000);
         } else {
             try {
                 defaultHost = InetAddress.getLocalHost().getHostName();
