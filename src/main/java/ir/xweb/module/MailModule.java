@@ -1,3 +1,10 @@
+
+/**
+ * XWeb project. 2012~2014.
+ * Hamed Abdollahpour
+ * https://github.com/abdollahpour/xweb
+ */
+
 package ir.xweb.module;
 
 import com.sun.mail.smtp.SMTPTransport;
@@ -12,24 +19,28 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 
+/**
+ * XWeb mail module.
+ *
+ * <p>Send email over SMTP with java mail</p>
+ *
+ * @author Hamed Abdollahpour
+ */
 public class MailModule extends Module {
 
-    public final static String PARAM_FROM = "from";
+    public static final String PARAM_FROM = "from";
 
-    public final static String PARAM_USERNAME = "username";
+    public static final String PARAM_USERNAME = "username";
 
-    public final static String PARAM_PASSWORD = "password";
+    public static final String PARAM_PASSWORD = "password";
 
-    public final static String PARAM_PORT = "port";
+    public static final String PARAM_PORT = "port";
 
-    public final static String PARAM_HOST = "host";
+    public static final String PARAM_HOST = "host";
 
-    public final static String PARAM_SSL = "ssl";
+    public static final String PARAM_SSL = "ssl";
 
     private final String from;
 
@@ -460,25 +471,45 @@ public class MailModule extends Module {
         };
     }
 
-    public static interface Mail {
+    public interface Mail {
 
-        public List<String> to();
+        /**
+         * Destination addresses as TO
+         * @return List of emails or Null if you don't need it.
+         */
+        List<String> to();
 
-        public List<String> bcc();
+        /**
+         * Destination addresses as BCC
+         * @return List of emails or Null if you don't need it.
+         */
+        List<String> bcc();
 
-        public List<String> cc();
+        /**
+         * Destination addresses as CC
+         * @return List of emails or Null if you don't need it.
+         */
+        List<String> cc();
 
-        public List<String> replayTo();
+        List<String> replayTo();
 
-        public String subject();
+        /**
+         * Email title
+         * @return title
+         */
+        String subject();
 
-        public String body();
+        /**
+         * Email body. If String starts with &gt; character, will send as HTML email.
+         * @return HTML or simple text string
+         */
+        String body();
 
-        public List<File> files();
+        List<File> files();
 
-        public Map<String, DataSource> attachments();
+        Map<String, DataSource> attachments();
 
-        public String from();
+        String from();
 
     }
 
