@@ -42,6 +42,10 @@ public class MailModule extends Module {
 
     public static final String PARAM_SSL = "ssl";
 
+    public static final String PARAM_TIMEOUT = "timeout";
+
+    public static final int DEFAULT_PARAM_TIMEOUT = 10000;
+
     private final String from;
 
     private final String username;
@@ -61,7 +65,7 @@ public class MailModule extends Module {
         username = properties.getString(PARAM_USERNAME, from);
         password = properties.getString(PARAM_PASSWORD);
 
-        props = System.getProperties();
+        props = new Properties();
 
         boolean ssl = properties.getBoolean(PARAM_SSL, false);
         String defaultHost = null;
@@ -77,13 +81,15 @@ public class MailModule extends Module {
             props.setProperty("mail.smtps.auth", "true");
             props.put("mail.smtps.quitwait", "false");
             props.put("mail.smtp.starttls.enable", true);
-            props.put("mail.smtp.timeout", 10000);
-            props.put("mail.smtp.connectiontimeout", 1000);
         } else {
             try {
                 defaultHost = InetAddress.getLocalHost().getHostName();
             } catch (Exception ex) {}
         }
+
+        final long timeout = properties.getInt(PARAM_TIMEOUT, DEFAULT_PARAM_TIMEOUT);
+        props.put("mail.smtp.timeout", timeout);
+        props.put("mail.smtp.connectiontimeout", timeout);
 
         if(ssl) {
             final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
