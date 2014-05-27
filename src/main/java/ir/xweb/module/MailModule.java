@@ -88,8 +88,9 @@ public class MailModule extends Module {
         }
 
         final long timeout = properties.getInt(PARAM_TIMEOUT, DEFAULT_PARAM_TIMEOUT);
-        props.put("mail.smtp.timeout", timeout);
         props.put("mail.smtp.connectiontimeout", timeout);
+        props.put("mail.smtp.timeout", timeout);
+        props.put("mail.smtp.writetimeout", timeout);
 
         if(ssl) {
             final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
