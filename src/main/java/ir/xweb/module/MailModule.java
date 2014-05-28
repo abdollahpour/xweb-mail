@@ -80,7 +80,6 @@ public class MailModule extends Module {
             props.setProperty("mail.smtp.socketFactory.port", "465");
             props.setProperty("mail.smtps.auth", "true");
             props.put("mail.smtps.quitwait", "false");
-            props.put("mail.smtp.starttls.enable", true);
         } else {
             try {
                 defaultHost = InetAddress.getLocalHost().getHostName();
@@ -94,6 +93,7 @@ public class MailModule extends Module {
 
         if(ssl) {
             final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
+            props.put("mail.smtp.starttls.enable", "true");
             props.setProperty("mail.smtp.socketFactory.class", SSL_FACTORY);
         }
 
