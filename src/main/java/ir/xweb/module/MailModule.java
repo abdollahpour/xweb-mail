@@ -9,26 +9,29 @@ package ir.xweb.module;
 
 import com.sun.mail.smtp.SMTPTransport;
 import ir.xweb.util.Validator;
+import org.apache.commons.fileupload.FileItem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.activation.DataHandler;
-import javax.activation.DataSource;
 import javax.activation.FileDataSource;
 import javax.mail.*;
 import javax.mail.internet.*;
-import java.io.File;
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * XWeb mail module.
- *
  * <p>Send email over SMTP with java mail</p>
- *
  * @author Hamed Abdollahpour
  */
 public class MailModule extends Module {
+
+    private static Logger logger = LoggerFactory.getLogger("MailModule");
 
     public static final String PARAM_FROM = "from";
 
@@ -50,9 +53,9 @@ public class MailModule extends Module {
 
     private final Properties props;
 
-    private LinkedBlockingDeque<Mail> mails = new LinkedBlockingDeque<Mail>();
+    private boolean deactivateActiveMails = false;
 
-    private Thread executor;
+    private MailModuleData data;
 
     public MailModule(final Manager m, final ModuleInfo info, final ModuleParam properties) throws ModuleException {
         super(m, info, properties);
@@ -102,114 +105,70 @@ public class MailModule extends Module {
         }
     }
 
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> replayTo,
-            final String subject,
-            final String body) throws IOException {
-        sendEmail(to, replayTo, subject, body, (Map<String, DataSource>)null);
+    @Override
+    public void init(ServletContext context) {
+        this.data = getManager().getImplemented(MailModuleData.class, null);
     }
 
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final List<File> attachments) throws IOException {
-
-        Map<String, DataSource> dataSources = null;
-        if(attachments != null && attachments.size() > 0) {
-            dataSources = new HashMap<String, DataSource>(attachments.size());
-            for(File f:attachments) {
-                dataSources.put(f.getName(), new FileDataSource(f));
+    @Override
+    public void process(
+            final ServletContext context,
+            final HttpServletRequest request,
+            final HttpServletResponse response,
+            final ModuleParam params,
+            final Map<String, FileItem> files) throws IOException
+    {
+        // check just for schedules
+        if("localhost".equalsIgnoreCase(request.getRemoteHost())) {
+            if(!deactivateActiveMails) {
+                deactivateActiveMails = true;
+                this.data.deactivateActiveMails();
             }
+
+            if(params.containsKey("send")) {
+                Mail mail;
+                while (!Thread.interrupted() && (mail = this.data.nextMail()) != null) {
+                    try {
+                        logger.trace("Try to send mail: " + mail);
+
+                        this.data.changeMailStatus(mail, Mail.STATUS_ACTIVE);
+                        _send(mail);
+                        this.data.changeMailStatus(mail, Mail.STATUS_SENT);
+
+                        logger.trace("Mail sent successfully: " + mail);
+                    } catch (Exception ex) {
+                        logger.error("Error to send email: " + mail, ex);
+                        try {
+                            this.data.changeMailStatus(mail, Mail.STATUS_FAILED);
+                        } catch (Exception ex2) {
+                            logger.error("Error to change mail status", ex2);
+                        }
+                    }
+                }
+            }
+
         }
-
-        sendEmail(to, cc, bcc, replayTo, subject, body, dataSources);
-    }
-
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final List<File> attachments) throws IOException {
-        sendEmail(to, null, null, replayTo, subject, body, attachments);
-    }
-
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final Map<String, DataSource> attachments) throws IOException {
-        sendEmail(to, null, null, replayTo, subject, body, attachments);
     }
 
     /**
-     * Send Mail asynchronously. It does not support attachments but you can use files
-     * @param mail
+     * Send new email. If <code>MailModuleData</code> present, this method will work asynchronous except it works
+     * synchronous.
+     * @param mail Mail
      * @throws IOException
      */
-    public synchronized void aSend(final Mail... mail) throws IOException {
-        // Validate
-        for(Mail m:mail) {
-            validate(m);
-        }
-
-        for(Mail m:mail) {
-            if(addToQ(m)) {
-                if(executor == null || !executor.isAlive()) {
-                    executor = new Thread() {
-                        @Override
-                        public void run() {
-                            Mail mail;
-                            while((mail = nextFromQ()) != null) {
-                                try {
-                                    send(mail);
-                                } catch (Throwable t) {
-                                    errorInQ(mail);
-                                }
-                            }
-                        }
-                    };
-                    executor.start();
-                }
-            } else {
-                throw new IllegalArgumentException("Error to add mail: " + mail);
-            }
-        }
-    }
-
-    /**
-     * Add email to the sending Q.
-     * You can Override this method to manage them by yourself (in database for example)
-     * @param mail
-     */
-    protected synchronized boolean addToQ(final Mail mail) {
-        return mails.add(mail);
-    }
-
-    protected synchronized Mail nextFromQ() {
-        return mails.size() > 0 ? mails.pop() : null;
-    }
-
-    /**
-     * Error happens to send email from Q.
-     * You can Override this method to manage them by yourself (in database for example)
-     * @param mail
-     */
-    protected synchronized boolean errorInQ(final Mail mail) {
-        return mails.remove(mail);
-    }
-
     public void send(final Mail mail) throws IOException {
+        // synchronous
+        if(this.data == null) {
+            _send(mail);
+        }
+
+        // asynchronous
+        else {
+            this.data.addMail(mail);
+        }
+    }
+
+    public void _send(final Mail mail) throws IOException {
         validate(mail);
 
         try {
@@ -256,21 +215,11 @@ public class MailModule extends Module {
 
             final Multipart multipart = new MimeMultipart();
 
-            if(mail.attachments() != null) {
-                for(Map.Entry<String,DataSource> e:mail.attachments().entrySet()) {
-                    MimeBodyPart messageBodyPart = new MimeBodyPart();
-                    messageBodyPart.setDataHandler(new DataHandler(e.getValue()));
-                    messageBodyPart.setFileName(e.getKey());
-
-                    multipart.addBodyPart(messageBodyPart);
-                }
-            }
-
             if(mail.files() != null) {
-                for(File f:mail.files()) {
+                for(String filename:mail.files()) {
                     MimeBodyPart messageBodyPart = new MimeBodyPart();
-                    messageBodyPart.setDataHandler(new DataHandler(new FileDataSource(f)));
-                    messageBodyPart.setFileName(f.getName());
+                    messageBodyPart.setDataHandler(new DataHandler(new FileDataSource(filename)));
+                    messageBodyPart.setFileName(filename);
 
                     multipart.addBodyPart(messageBodyPart);
                 }
@@ -311,76 +260,6 @@ public class MailModule extends Module {
         }
     }
 
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final Map<String, DataSource> attachments) throws IOException {
-
-        send(to, cc, bcc, replayTo, subject, body, attachments);
-    }
-
-    public void send(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final Map<String, DataSource> attachments) throws IOException {
-
-        send(new Mail() {
-            @Override
-            public List<String> to() {
-                return to;
-            }
-
-            @Override
-            public List<String> bcc() {
-                return bcc;
-            }
-
-            @Override
-            public List<String> cc() {
-                return cc;
-            }
-
-            @Override
-            public List<String> replayTo() {
-                return replayTo;
-            }
-
-            @Override
-            public String subject() {
-                return subject;
-            }
-
-            @Override
-            public String body() {
-                return body;
-            }
-
-            @Override
-            public List<File> files() {
-                return files();
-            }
-
-            @Override
-            public Map<String, DataSource> attachments() {
-                return attachments;
-            }
-
-            @Override
-            public String from() {
-                return null;
-            }
-        });
-    }
-
     private Address[] toAddress(final List<String> to) throws AddressException {
         final Address[] addresses = new Address[to.size()];
         for(int i=0; i<to.size(); i++) {
@@ -390,6 +269,11 @@ public class MailModule extends Module {
         return addresses;
     }
 
+    /**
+     * Check String is HTML string or not.
+     * @param s Text or HTML
+     * @return True if it's HTML
+     */
     private boolean isHtml(final String s) {
         for(int i=0; i<s.length(); i++) {
             char c = s.charAt(i);
@@ -400,6 +284,10 @@ public class MailModule extends Module {
         return false;
     }
 
+    /**
+     * Validate emails.
+     * @param m Mail
+     */
     private void validate(final Mail m) {
         if(m == null) {
             throw new IllegalArgumentException("null");
@@ -455,12 +343,7 @@ public class MailModule extends Module {
             }
 
             @Override
-            public List<File> files() {
-                return null;
-            }
-
-            @Override
-            public Map<String, DataSource> attachments() {
+            public Collection<String> files() {
                 return null;
             }
 
@@ -469,48 +352,6 @@ public class MailModule extends Module {
                 return null;
             }
         };
-    }
-
-    public interface Mail {
-
-        /**
-         * Destination addresses as TO
-         * @return List of emails or Null if you don't need it.
-         */
-        List<String> to();
-
-        /**
-         * Destination addresses as BCC
-         * @return List of emails or Null if you don't need it.
-         */
-        List<String> bcc();
-
-        /**
-         * Destination addresses as CC
-         * @return List of emails or Null if you don't need it.
-         */
-        List<String> cc();
-
-        List<String> replayTo();
-
-        /**
-         * Email title
-         * @return title
-         */
-        String subject();
-
-        /**
-         * Email body. If String starts with &gt; character, will send as HTML email.
-         * @return HTML or simple text string
-         */
-        String body();
-
-        List<File> files();
-
-        Map<String, DataSource> attachments();
-
-        String from();
-
     }
 
 }
