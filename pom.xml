@@ -4,13 +4,13 @@
 	<groupId>ir.xweb</groupId>
 	<artifactId>xweb-mail</artifactId>
 	<packaging>jar</packaging>
-    <version>0.7.0</version>
+    <version>0.7.1-SNAPSHOT</version>
 	<name>XWeb mail module</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<com.objectdb.version>2.4.1</com.objectdb.version>
-		<ir.xweb.version>${project.version}</ir.xweb.version>
+		<ir.xweb.version>0.7.0-SNAPSHOT</ir.xweb.version>
 	</properties>
 
 	<repositories>

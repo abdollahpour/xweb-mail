@@ -385,6 +385,10 @@ public class MailModule extends Module {
             public String from() {
                 return null;
             }
+
+            @Override
+            public boolean isImportant() {return false;}
+
         });
     }
 
@@ -475,6 +479,12 @@ public class MailModule extends Module {
             public String from() {
                 return null;
             }
+
+            @Override
+            public boolean isImportant() {
+                return false;
+            }
+
         };
     }
 
@@ -517,6 +527,8 @@ public class MailModule extends Module {
         Map<String, DataSource> attachments();
 
         String from();
+
+        boolean isImportant();
 
     }
 
