@@ -299,25 +299,27 @@ public class MailModule extends Module {
             }
 
             // TODO: HTML email appear 2 time in GMAIL! We disable text mode now
+            if(mail.isImportant()) {
+              message.setHeader("X-Priority", "2");
+              //message.setHeader("Importance", "high");
+              //message.setHeader("MIME-Version", "1.0");
+            }
 
             message.setSentDate(new Date());
             message.setContent(multipart);
 
-            if(mail.isImportant()) {
-                message.addHeader("Importance", "high");
-                message.addHeader("X-Priority", "1");
-            }
+
 
             // For some reason, Transport does not work for google
-            if(props.getProperty("mail.smtp.host").equals("smtp.gmail.com")) {
-                final SMTPTransport t = (SMTPTransport) session.getTransport("smtps");
+            //if(props.getProperty("mail.smtp.host").equals("smtp.gmail.com")) {
+            //    final SMTPTransport t = (SMTPTransport) session.getTransport("smtps");
 
-                t.connect("smtp.gmail.com", username, password);
-                t.sendMessage(message, message.getAllRecipients());
-                t.close();
-            } else {
+            //    t.connect("smtp.gmail.com", username, password);
+            //    t.sendMessage(message, message.getAllRecipients());
+            //    t.close();
+            //} else {
                 Transport.send(message);
-            }
+            //}
         } catch (Exception ex) {
             throw new IOException(ex);
         }
