@@ -303,6 +303,11 @@ public class MailModule extends Module {
             message.setSentDate(new Date());
             message.setContent(multipart);
 
+            if(mail.isImportant()) {
+                message.addHeader("Importance", "high");
+                message.addHeader("X-Priority", "1");
+            }
+
             // For some reason, Transport does not work for google
             if(props.getProperty("mail.smtp.host").equals("smtp.gmail.com")) {
                 final SMTPTransport t = (SMTPTransport) session.getTransport("smtps");
