@@ -7,7 +7,6 @@
 
 package ir.xweb.module;
 
-import com.sun.mail.smtp.SMTPTransport;
 import ir.xweb.util.Validator;
 
 import javax.activation.DataHandler;
@@ -120,43 +119,22 @@ public class MailModule extends Module {
 
     @Deprecated
     public void sendEmail(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
+            final List<String> recipients,
             final List<String> replayTo,
             final String subject,
             final String body,
             final List<File> attachments) throws IOException {
-
-        Map<String, DataSource> dataSources = null;
-        if(attachments != null && attachments.size() > 0) {
-            dataSources = new HashMap<String, DataSource>(attachments.size());
-            for(File f:attachments) {
-                dataSources.put(f.getName(), new FileDataSource(f));
-            }
-        }
-
-        sendEmail(to, cc, bcc, replayTo, subject, body, dataSources);
+        sendEmail(recipients, replayTo, subject, body, attachments);
     }
 
     @Deprecated
     public void sendEmail(
-            final List<String> to,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final List<File> attachments) throws IOException {
-        sendEmail(to, null, null, replayTo, subject, body, attachments);
-    }
-
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
+            final List<String> recipients,
             final List<String> replayTo,
             final String subject,
             final String body,
             final Map<String, DataSource> attachments) throws IOException {
-        sendEmail(to, null, null, replayTo, subject, body, attachments);
+        sendEmail(recipients, replayTo, subject, body, attachments);
     }
 
     /**
@@ -242,15 +220,26 @@ public class MailModule extends Module {
                 message.setReplyTo(addresses);
             }
 
-            if(mail.to() != null) {
-                message.addRecipients(Message.RecipientType.TO, toAddress(mail.to()));
+            for (String r:mail.recipients()) {
+                final String smallR = r.toLowerCase().trim();
+
+                if (smallR.length() > 0) {
+                    if (smallR.startsWith("to:")) {
+                        message.addRecipients(Message.RecipientType.TO,
+                                new Address[]{new InternetAddress(r.trim().substring(3).trim())});
+                    } else if (smallR.startsWith("cc:")) {
+                        message.addRecipients(Message.RecipientType.CC,
+                                new Address[]{new InternetAddress(r.trim().substring(3).trim())});
+                    } else if (smallR.startsWith("bcc:")) {
+                        message.addRecipients(Message.RecipientType.BCC,
+                                new Address[]{new InternetAddress(r.trim().substring(4).trim())});
+                    } else {
+                        message.addRecipients(Message.RecipientType.TO,
+                                new Address[]{new InternetAddress(r.trim())});
+                    }
+                }
             }
-            if(mail.cc() != null) {
-                message.addRecipients(Message.RecipientType.CC, toAddress(mail.cc()));
-            }
-            if(mail.bcc() != null) {
-                message.addRecipients(Message.RecipientType.BCC, toAddress(mail.bcc()));
-            }
+
             if(mail.from() != null) {
                 message.setFrom(new InternetAddress(mail.from()));
             } else if(this.from != null) {
@@ -325,23 +314,8 @@ public class MailModule extends Module {
         }
     }
 
-    @Deprecated
-    public void sendEmail(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
-            final List<String> replayTo,
-            final String subject,
-            final String body,
-            final Map<String, DataSource> attachments) throws IOException {
-
-        send(to, cc, bcc, replayTo, subject, body, attachments);
-    }
-
     public void send(
-            final List<String> to,
-            final List<String> cc,
-            final List<String> bcc,
+            final List<String> recipients,
             final List<String> replayTo,
             final String subject,
             final String body,
@@ -349,18 +323,8 @@ public class MailModule extends Module {
 
         send(new Mail() {
             @Override
-            public List<String> to() {
-                return to;
-            }
-
-            @Override
-            public List<String> bcc() {
-                return bcc;
-            }
-
-            @Override
-            public List<String> cc() {
-                return cc;
+            public List<String> recipients() {
+                return recipients;
             }
 
             @Override
@@ -423,7 +387,7 @@ public class MailModule extends Module {
             throw new IllegalArgumentException("null");
         }
 
-        if((m.to() == null || m.to().size() == 0) && (m.bcc() == null || m.bcc().size() == 0) && (m.cc() == null || m.cc().size() == 0)) {
+        if((m.recipients() == null || m.recipients().size() == 0)) {
             throw new IllegalArgumentException("There should be at least one TO, BCC or CC");
         }
 
@@ -440,21 +404,11 @@ public class MailModule extends Module {
         return newMail(Arrays.asList(to), subject, body);
     }
 
-    public static Mail newMail(final List<String> to, final String subject, final String body) {
+    public static Mail newMail(final List<String> recipients, final String subject, final String body) {
         return new Mail() {
             @Override
-            public List<String> to() {
-                return to;
-            }
-
-            @Override
-            public List<String> bcc() {
-                return null;
-            }
-
-            @Override
-            public List<String> cc() {
-                return null;
+            public List<String> recipients() {
+                return recipients;
             }
 
             @Override
@@ -498,22 +452,10 @@ public class MailModule extends Module {
     public interface Mail {
 
         /**
-         * Destination addresses as TO
+         * Destination addresses. It can start with 'to:', 'cc:' and 'bcc:' to specify recipient type.
          * @return List of emails or Null if you don't need it.
          */
-        List<String> to();
-
-        /**
-         * Destination addresses as BCC
-         * @return List of emails or Null if you don't need it.
-         */
-        List<String> bcc();
-
-        /**
-         * Destination addresses as CC
-         * @return List of emails or Null if you don't need it.
-         */
-        List<String> cc();
+        List<String> recipients();
 
         List<String> replayTo();
 

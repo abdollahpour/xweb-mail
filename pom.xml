@@ -4,7 +4,7 @@
 	<groupId>ir.xweb</groupId>
 	<artifactId>xweb-mail</artifactId>
 	<packaging>jar</packaging>
-    <version>0.7.1</version>
+    <version>0.7.2-SNAPSHOT</version>
 	<name>XWeb mail module</name>
 
 	<properties>
